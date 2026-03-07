@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0f;
+  --surface: rgba(255, 255, 255, 0.03);
+  --border: rgba(255, 255, 255, 0.08);
+  --text: #e4e4e7;
+  --text-muted: #71717a;
+  --text-dim: #a1a1aa;
+  --accent: #818cf8;
+  --accent-hover: #6366f1;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+/* Streak fire animation */
+@keyframes fireGlow {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.3);
+  }
+}
+.animate-fire {
+  animation: fireGlow 2s ease-in-out infinite;
+}
+
+/* Progress bar animation */
+.progress-fill {
+  transition: width 0.5s ease;
+}
+
+/* Textarea focus */
+textarea:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.15);
+}
