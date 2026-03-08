@@ -12,6 +12,17 @@ type UserProfile = { id: string; email?: string; name?: string; avatar?: string;
 
 const DAILY_FREE_LIMIT = 1;
 
+const MODEL_OPTIONS = {
+  anthropic: [
+    { id: "claude-haiku-4.5-20241022", name: "Claude Haiku 4.5", desc: "빠르고 저렴", cost: "~2원/회" },
+    { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", desc: "고품질 피드백", cost: "~15원/회" },
+  ],
+  openai: [
+    { id: "gpt-4o-mini", name: "GPT-4o mini", desc: "빠르고 저렴", cost: "~1원/회" },
+    { id: "gpt-4o", name: "GPT-4o", desc: "균형잡힌 성능", cost: "~12원/회" },
+  ],
+};
+
 function getToday() { return new Date().toISOString().split("T")[0]; }
 function formatDate(iso: string) { const d = new Date(iso); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; }
 function loadJSON<T>(key: string, fallback: T): T { if (typeof window==="undefined") return fallback; try { const r=localStorage.getItem(key); return r?JSON.parse(r):fallback; } catch { return fallback; } }
@@ -38,13 +49,14 @@ export default function Home() {
   const [lastStudyDate, setLastStudyDate] = useState<string|null>(null);
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set(CATEGORIES));
   const [customApiKey, setCustomApiKey] = useState("");
+  const [selectedModel, setSelectedModel] = useState("");
   const [apiKeyInput, setApiKeyInput] = useState("");
+  const [modelInput, setModelInput] = useState("");
   const [showCategorySettings, setShowCategorySettings] = useState(false);
   const [showApiKeySettings, setShowApiKeySettings] = useState(false);
   const [expandedId, setExpandedId] = useState<number|null>(null);
   const [feedbackUsedToday, setFeedbackUsedToday] = useState(0);
 
-  // Close dropdown
   useEffect(() => { const h=(e:MouseEvent)=>{ if(dropdownRef.current&&!dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false); }; document.addEventListener("mousedown",h); return ()=>document.removeEventListener("mousedown",h); }, []);
 
   // Auth
@@ -68,7 +80,6 @@ export default function Home() {
       if(user){
         const [recs,bks]=await Promise.all([fetchStudyRecords(user.id),fetchBookmarks(user.id)]);
         const m=new Map<number,StudyRecord>(); recs.forEach(r=>m.set(r.question_id,r)); setRecords(m); setBookmarks(new Set(bks));
-        // Count today's feedback usage
         const todayFb = recs.filter(r => r.feedback && r.studied_at.startsWith(getToday())).length;
         setFeedbackUsedToday(todayFb);
       } else {
@@ -80,6 +91,7 @@ export default function Home() {
       const ld=loadJSON<string|null>("lastStudyDate",null); setLastStudyDate(ld);
       setSelectedCategories(new Set(loadJSON<string[]>("selectedCategories",CATEGORIES)));
       setCustomApiKey(loadJSON<string>("customApiKey",""));
+      setSelectedModel(loadJSON<string>("selectedModel",""));
       if(ld&&ld!==getToday()){ const y=new Date(); y.setDate(y.getDate()-1); if(ld!==y.toISOString().split("T")[0]){setStreak(0);saveJSON("streak",0);} }
       setDataLoaded(true);
     }
@@ -95,11 +107,21 @@ export default function Home() {
   const bookmarkCount=QUESTIONS.filter(q=>bookmarks.has(q.id)).length;
   const totalQ=activeQuestions.length;
   const progress=totalQ>0?Math.round((completedInActive/totalQ)*100):0;
+  const hasCustomKey=!!customApiKey;
+  const feedbackRemaining=hasCustomKey?Infinity:DAILY_FREE_LIMIT-feedbackUsedToday;
+  const canUseFeedback=!!user&&(hasCustomKey||feedbackRemaining>0);
 
-  // AI feedback availability
-  const hasCustomKey = !!customApiKey;
-  const feedbackRemaining = hasCustomKey ? Infinity : DAILY_FREE_LIMIT - feedbackUsedToday;
-  const canUseFeedback = !!user && (hasCustomKey || feedbackRemaining > 0);
+  // Detect provider from key
+  const keyProvider = customApiKey.startsWith("sk-ant-") ? "anthropic" : customApiKey.startsWith("sk-") ? "openai" : null;
+  const inputProvider = apiKeyInput.startsWith("sk-ant-") ? "anthropic" : apiKeyInput.startsWith("sk-") ? "openai" : null;
+
+  // Current model display name
+  const getModelName = () => {
+    if (!hasCustomKey) return "GPT-4o mini (기본)";
+    const allModels = [...MODEL_OPTIONS.anthropic, ...MODEL_OPTIONS.openai];
+    const found = allModels.find(m => m.id === selectedModel);
+    return found ? found.name : selectedModel || "자동 선택";
+  };
 
   const pickRandom=useCallback((cat="all",diff="all",review=false)=>{
     let pool=review?activeQuestions.filter(q=>bookmarks.has(q.id)):activeQuestions;
@@ -131,21 +153,26 @@ export default function Home() {
 
   const toggleCategory=(cat:string)=>{ const c=new Set(selectedCategories); if(c.has(cat)){if(c.size<=1)return;c.delete(cat);}else c.add(cat); setSelectedCategories(c); saveJSON("selectedCategories",[...c]); };
   const selectAllCategories=()=>{ setSelectedCategories(new Set(CATEGORIES)); saveJSON("selectedCategories",CATEGORIES); };
-  const saveApiKey=()=>{ const k=apiKeyInput.trim(); setCustomApiKey(k); saveJSON("customApiKey",k); setShowApiKeySettings(false); };
-  const removeApiKeyAction=()=>{ setCustomApiKey(""); setApiKeyInput(""); saveJSON("customApiKey",""); };
+
+  const saveApiKey=()=>{
+    const k=apiKeyInput.trim();
+    setCustomApiKey(k); saveJSON("customApiKey",k);
+    const m=modelInput; setSelectedModel(m); saveJSON("selectedModel",m);
+    setShowApiKeySettings(false);
+  };
+  const removeApiKeyAction=()=>{ setCustomApiKey(""); setApiKeyInput(""); setSelectedModel(""); setModelInput(""); saveJSON("customApiKey",""); saveJSON("selectedModel",""); };
 
   const requestFeedback=async()=>{
     if(!answer.trim()||!currentQ) return;
     if(!user){ setFeedback("로그인 후 AI 피드백을 사용할 수 있어요."); return; }
     if(!canUseFeedback){ setFeedback(`오늘의 무료 AI 피드백 ${DAILY_FREE_LIMIT}회를 모두 사용했어요.\n설정에서 본인의 API 키를 등록하면 무제한으로 사용할 수 있어요.`); return; }
-
     setLoadingFeedback(true); setFeedback(null);
     try {
       const {data:{session}}=await supabase.auth.getSession();
       const res=await fetch("/api/feedback",{
         method:"POST",
         headers:{"Content-Type":"application/json","Authorization":`Bearer ${session?.access_token}`},
-        body:JSON.stringify({question:currentQ.question,answer,customApiKey:customApiKey||undefined}),
+        body:JSON.stringify({question:currentQ.question,answer,customApiKey:customApiKey||undefined,model:selectedModel||undefined}),
       });
       const data=await res.json();
       if(res.ok){
@@ -181,9 +208,9 @@ export default function Home() {
               <div className="py-1">
                 <button onClick={()=>{setDropdownOpen(false);openBrowse({type:"bookmarks"});}} className="w-full px-4 py-2.5 text-left text-sm text-zinc-300 hover:bg-white/[0.06] flex items-center gap-2.5 cursor-pointer bg-transparent border-none"><span className="text-base">🔖</span>북마크 ({bookmarkCount})</button>
                 <button onClick={()=>{setDropdownOpen(false);setShowCategorySettings(true);}} className="w-full px-4 py-2.5 text-left text-sm text-zinc-300 hover:bg-white/[0.06] flex items-center gap-2.5 cursor-pointer bg-transparent border-none"><span className="text-base">📂</span>카테고리 설정</button>
-                <button onClick={()=>{setDropdownOpen(false);setApiKeyInput(customApiKey);setShowApiKeySettings(true);}} className="w-full px-4 py-2.5 text-left text-sm text-zinc-300 hover:bg-white/[0.06] flex items-center gap-2.5 cursor-pointer bg-transparent border-none">
-                  <span className="text-base">🤖</span>AI 토큰 등록
-                  {customApiKey&&<span className="ml-auto text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">등록됨</span>}
+                <button onClick={()=>{setDropdownOpen(false);setApiKeyInput(customApiKey);setModelInput(selectedModel);setShowApiKeySettings(true);}} className="w-full px-4 py-2.5 text-left text-sm text-zinc-300 hover:bg-white/[0.06] flex items-center gap-2.5 cursor-pointer bg-transparent border-none">
+                  <span className="text-base">🤖</span>AI 설정
+                  {customApiKey&&<span className="ml-auto text-[10px] text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">{getModelName()}</span>}
                 </button>
               </div>
               <div className="border-t border-white/[0.06] py-1">
@@ -201,7 +228,7 @@ export default function Home() {
     </div>
   );
 
-  // ━━━ Modals ━━━
+  // ━━━ Category Modal ━━━
   const CategoryModal=()=>{
     if(!showCategorySettings) return null;
     return (
@@ -222,53 +249,93 @@ export default function Home() {
         </div>
       </div>);};
 
+  // ━━━ API Key + Model Modal ━━━
   const ApiKeyModal=()=>{
     if(!showApiKeySettings) return null;
+    const availableModels = inputProvider ? MODEL_OPTIONS[inputProvider] : null;
+
+    // Auto-select first model when provider changes
+    const handleKeyChange = (val: string) => {
+      setApiKeyInput(val);
+      const prov = val.startsWith("sk-ant-") ? "anthropic" : val.startsWith("sk-") ? "openai" : null;
+      if (prov && (!modelInput || !MODEL_OPTIONS[prov].some(m => m.id === modelInput))) {
+        setModelInput(MODEL_OPTIONS[prov][0].id);
+      }
+    };
+
     return (
       <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={()=>setShowApiKeySettings(false)}>
         <div className="bg-[#18181b] border border-white/10 rounded-2xl w-full max-w-md" onClick={e=>e.stopPropagation()}>
-          <div className="px-5 py-4 border-b border-white/[0.06]"><h3 className="text-lg font-bold text-zinc-100">AI 토큰 등록</h3><p className="text-xs text-zinc-500 mt-1">본인의 API 키를 등록하면 무제한 AI 피드백을 받을 수 있어요.</p></div>
+          <div className="px-5 py-4 border-b border-white/[0.06]">
+            <h3 className="text-lg font-bold text-zinc-100">AI 설정</h3>
+            <p className="text-xs text-zinc-500 mt-1">API 키와 모델을 선택하세요.</p>
+          </div>
           <div className="p-5 space-y-4">
+            {/* Current status */}
             <div className={`px-4 py-3 rounded-xl text-sm ${customApiKey?"bg-emerald-400/[0.06] border border-emerald-400/20 text-emerald-400":"bg-zinc-800 border border-white/[0.06] text-zinc-400"}`}>
-              {customApiKey?(<div className="flex items-center justify-between"><span>✓ 키 등록됨 ({customApiKey.startsWith("sk-ant-")?"Anthropic":"OpenAI"})</span><button onClick={removeApiKeyAction} className="text-xs text-red-400 cursor-pointer bg-transparent border-none">삭제</button></div>):(<span>미등록 시 하루 {DAILY_FREE_LIMIT}회 무료 피드백 제공</span>)}
+              {customApiKey?(<div className="flex items-center justify-between"><span>✓ {getModelName()} 사용 중</span><button onClick={removeApiKeyAction} className="text-xs text-red-400 cursor-pointer bg-transparent border-none">초기화</button></div>):(<span>미등록 시 하루 {DAILY_FREE_LIMIT}회 GPT-4o mini 무료 제공</span>)}
             </div>
-            <div><label className="block text-sm font-semibold text-zinc-400 mb-2">API Key</label><input type="password" value={apiKeyInput} onChange={e=>setApiKeyInput(e.target.value)} placeholder="sk-ant-... 또는 sk-..." className="w-full px-4 py-3 text-sm text-zinc-200 bg-white/[0.04] border border-white/10 rounded-xl outline-none placeholder:text-zinc-600"/><p className="text-[11px] text-zinc-600 mt-2">키는 브라우저에만 저장됩니다.</p></div>
+
+            {/* API Key */}
+            <div>
+              <label className="block text-sm font-semibold text-zinc-400 mb-2">API Key</label>
+              <input type="password" value={apiKeyInput} onChange={e=>handleKeyChange(e.target.value)} placeholder="sk-ant-... (Anthropic) 또는 sk-... (OpenAI)"
+                className="w-full px-4 py-3 text-sm text-zinc-200 bg-white/[0.04] border border-white/10 rounded-xl outline-none placeholder:text-zinc-600"/>
+              <p className="text-[11px] text-zinc-600 mt-1.5">키는 브라우저에만 저장됩니다.</p>
+            </div>
+
+            {/* Model Selection */}
+            {availableModels && (
+              <div>
+                <label className="block text-sm font-semibold text-zinc-400 mb-2">모델 선택</label>
+                <div className="space-y-2">
+                  {availableModels.map(m => (
+                    <button key={m.id} onClick={() => setModelInput(m.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-pointer text-left ${
+                        modelInput === m.id
+                          ? "bg-indigo-500/10 border-indigo-500/30"
+                          : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]"
+                      }`}>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        modelInput === m.id ? "border-indigo-400" : "border-zinc-600"
+                      }`}>
+                        {modelInput === m.id && <div className="w-2 h-2 rounded-full bg-indigo-400" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className={`text-sm font-medium ${modelInput === m.id ? "text-zinc-100" : "text-zinc-400"}`}>{m.name}</div>
+                        <div className="text-[11px] text-zinc-600">{m.desc}</div>
+                      </div>
+                      <span className={`text-[11px] font-mono ${modelInput === m.id ? "text-indigo-400" : "text-zinc-600"}`}>{m.cost}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!inputProvider && apiKeyInput.trim() && (
+              <p className="text-xs text-amber-400">키 형식을 확인해주세요. Anthropic은 sk-ant-..., OpenAI는 sk-...로 시작합니다.</p>
+            )}
           </div>
           <div className="px-5 py-4 border-t border-white/[0.06] flex gap-2.5">
             <button onClick={()=>setShowApiKeySettings(false)} className="flex-1 py-3 text-sm font-semibold text-zinc-400 bg-white/[0.05] border border-white/10 rounded-xl cursor-pointer">취소</button>
-            <button onClick={saveApiKey} disabled={!apiKeyInput.trim()} className="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-violet-500 rounded-xl cursor-pointer border-none disabled:opacity-40">저장</button>
+            <button onClick={saveApiKey} disabled={!apiKeyInput.trim()||!inputProvider} className="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-violet-500 rounded-xl cursor-pointer border-none disabled:opacity-40">저장</button>
           </div>
         </div>
       </div>);};
 
-  // ━━━ Feedback Button Component ━━━
+  // ━━━ Feedback Button ━━━
   const FeedbackButton = () => {
-    if (!user) {
-      return (
-        <button disabled className="flex-1 py-3.5 text-[14px] font-semibold text-zinc-500 bg-white/[0.04] border border-white/[0.06] rounded-xl cursor-default">
-          🔒 로그인 후 AI 피드백 사용 가능
-        </button>
-      );
-    }
-    if (!canUseFeedback) {
-      return (
-        <button onClick={() => { setApiKeyInput(customApiKey); setShowApiKeySettings(true); }}
-          className="flex-1 py-3.5 text-[14px] font-semibold text-amber-400/80 bg-amber-400/[0.05] border border-amber-400/15 rounded-xl cursor-pointer">
-          오늘 무료 피드백 소진 · API 키 등록하기
-        </button>
-      );
-    }
+    if (!user) return <button disabled className="flex-1 py-3.5 text-[14px] font-semibold text-zinc-500 bg-white/[0.04] border border-white/[0.06] rounded-xl cursor-default">🔒 로그인 후 AI 피드백 사용 가능</button>;
+    if (!canUseFeedback) return <button onClick={()=>{setApiKeyInput(customApiKey);setModelInput(selectedModel);setShowApiKeySettings(true);}} className="flex-1 py-3.5 text-[14px] font-semibold text-amber-400/80 bg-amber-400/[0.05] border border-amber-400/15 rounded-xl cursor-pointer">오늘 무료 피드백 소진 · API 키 등록하기</button>;
     return (
       <div className="flex-1 flex flex-col">
         <button disabled={!answer.trim()||loadingFeedback} onClick={requestFeedback}
           className="w-full py-3.5 text-[15px] font-bold text-white bg-gradient-to-r from-indigo-500 to-violet-500 rounded-xl transition-opacity cursor-pointer disabled:opacity-40 disabled:cursor-default">
           {loadingFeedback?"⏳ AI 분석 중...":"🤖 AI 피드백 받기"}
         </button>
-        {!hasCustomKey && (
-          <span className="text-[11px] text-zinc-600 text-center mt-1.5">
-            오늘 남은 무료 피드백: {feedbackRemaining}/{DAILY_FREE_LIMIT}회
-          </span>
-        )}
+        <span className="text-[11px] text-zinc-600 text-center mt-1.5">
+          {hasCustomKey ? getModelName() : `무료 GPT-4o mini · 남은 횟수: ${feedbackRemaining}/${DAILY_FREE_LIMIT}`}
+        </span>
       </div>
     );
   };
