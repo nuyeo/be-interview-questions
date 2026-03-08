@@ -6,8 +6,8 @@
 
 <!-- 스크린샷 들어갈 자리 -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/0b17d200-7e27-4e36-b1ef-7f1bef946dc1" height="650" />
-  <img src="https://github.com/user-attachments/assets/9f604443-6cf5-4924-ae8e-feceaa3337c4" height="650" />
+  <img src="https://github.com/user-attachments/assets/0b17d200-7e27-4e36-b1ef-7f1bef946dc1" height="520" />
+  <img src="https://github.com/user-attachments/assets/9f604443-6cf5-4924-ae8e-feceaa3337c4" height="520" />
 </p>
 
 <!-- ![메인 화면](./screenshots/home.png) -->
