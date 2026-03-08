@@ -2,9 +2,10 @@
 
 > 매일 한 문제, 백엔드 기술 면접 준비 — 게이미피케이션 기반 학습 웹앱
 
-**[👉 지금 바로 사용하기](https://be-interview-questions-vercel-y3r2.vercel.app/)**
+**[👉 지금 바로 사용하기](https://be-interview-questions.vercel.app/)**
 
 <!-- 스크린샷 들어갈 자리 -->
+![화면 캡처 2026-03-09 002013](https://github.com/user-attachments/assets/0b17d200-7e27-4e36-b1ef-7f1bef946dc1)
 <!-- ![메인 화면](./screenshots/home.png) -->
 
 ## 💡 만든 이유
@@ -32,7 +33,7 @@ Solved.ac나 듀오링고처럼 **스트릭과 게이미피케이션 요소**가
 ### 🤖 AI 피드백
 - 답변 작성 후 AI가 점수/좋은 점/보완할 점/핵심 키워드 피드백
 - 본인 API 키 등록 시 Anthropic Claude 또는 OpenAI GPT 사용 가능
-- 미등록 시 기본 GPT-4o-mini 제공
+- 미등록 시 기본 GPT-4o-mini 일 1회 제공
 
 ### 📝 학습 기록 저장
 - 작성한 답변 + AI 피드백 + 학습 날짜 자동 저장 (Supabase DB)
