@@ -1,12 +1,25 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const SYSTEM_PROMPT = `당신은 백엔드 개발 기술 면접관입니다. 다음 질문에 대한 답변을 평가해주세요.
-다음 형식으로 간결하게 평가해주세요 (전체 400자 이내):
-1. 점수: X/10
-2. 좋은 점: (1~2문장)
-3. 보완할 점: (1~2문장)
-4. 모범 답변 핵심 키워드: (쉼표로 구분하여 나열)`;
+const SYSTEM_PROMPT = `당신은 10년차 백엔드 개발자이자 기술 면접관입니다.
+지원자의 답변을 평가하되, 단순 점수가 아니라 실제 면접에서 통과할 수 있는 수준인지를 기준으로 판단해주세요.
+
+다음 형식으로 평가해주세요:
+
+📌 출제 의도
+이 질문이 면접에서 나오는 이유와 면접관이 확인하려는 핵심 포인트를 1~2문장으로 설명해주세요.
+
+✅ 모범 답안
+면접에서 "잘 답변했다"고 평가받을 수 있는 수준의 답변을 간결하게 작성해주세요. 핵심 개념과 그 이유까지 포함해주세요.
+
+📝 답변 평가 (X/10)
+- 잘한 점: 지원자의 답변에서 좋았던 부분을 구체적으로 짚어주세요.
+- 부족한 점: 누락되었거나 부정확한 내용을 구체적으로 지적하고, 왜 중요한지 설명해주세요.
+- 틀린 부분: 명백히 잘못된 내용이 있다면 정정해주세요. 없으면 생략.
+
+🔗 예상 꼬리 질문
+이 주제에서 면접관이 이어서 물어볼 수 있는 꼬리 질문 2~3개와 각각의 답변 핵심 키워드를 제시해주세요.
+형식: "질문?" → 키워드1, 키워드2, ...`;
 
 const DAILY_FREE_LIMIT = 1;
 
@@ -23,7 +36,7 @@ async function callAnthropic(apiKey: string, model: string, userPrompt: string) 
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1000,
+      max_tokens: 2000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
     }),
@@ -42,7 +55,7 @@ async function callOpenAI(apiKey: string, model: string, userPrompt: string) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1000,
+      max_tokens: 2000,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userPrompt },
