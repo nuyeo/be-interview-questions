@@ -178,6 +178,8 @@ export default function Home() {
       if(res.ok){
         setFeedback(data.feedback);
         if(!hasCustomKey) setFeedbackUsedToday(prev=>prev+1);
+        // 피드백을 받은 즉시 DB에 저장 (새로고침해도 카운트 유지)
+        await saveRecord(currentQ.id, answer, data.feedback);
       } else {
         setFeedback(data.error||"피드백을 받지 못했습니다.");
       }
