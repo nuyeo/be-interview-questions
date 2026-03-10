@@ -141,6 +141,15 @@ textarea:focus {
   text-decoration: underline;
 }
 
+/* Select dropdown options (OS-rendered) */
+select {
+  color-scheme: dark;
+}
+select option {
+  background: #18181b;
+  color: #e4e4e7;
+}
+
 /* Copy button toast */
 @keyframes fadeInOut {
   0% { opacity: 0; transform: translateY(4px); }
