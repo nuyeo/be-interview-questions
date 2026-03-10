@@ -10,7 +10,7 @@ import { QUESTIONS, CATEGORIES, DIFF_LABELS, CAT_COLORS, type Question } from "@
 type BrowseMode = { type: "all" } | { type: "category"; category: string } | { type: "today" } | { type: "completed" } | { type: "bookmarks" };
 type UserProfile = { id: string; email?: string; name?: string; avatar?: string; login?: string };
 
-const DAILY_FREE_LIMIT = 1;
+const DAILY_FREE_LIMIT = 30;
 
 const MODEL_OPTIONS = {
   anthropic: [
