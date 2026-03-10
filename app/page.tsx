@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import { supabase } from "@/lib/supabase";
 import {
   fetchStudyRecords, upsertStudyRecord, fetchBookmarks, addBookmark, removeBookmark, type StudyRecord,
@@ -402,7 +403,7 @@ export default function Home() {
               </div>
               {isExpanded&&rec&&(<div className="mt-3 space-y-3">
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4"><div className="text-xs font-semibold text-zinc-500 mb-2">📝 내 답변</div><p className="text-sm leading-relaxed text-zinc-300 whitespace-pre-wrap">{rec.answer}</p></div>
-                {rec.feedback&&(<div className="bg-emerald-400/[0.04] border border-emerald-400/15 rounded-xl p-4"><div className="text-xs font-semibold text-emerald-400 mb-2">🤖 AI 피드백</div><pre className="text-sm leading-relaxed text-zinc-300 whitespace-pre-wrap font-[inherit] m-0">{rec.feedback}</pre></div>)}
+                {rec.feedback&&(<FeedbackCard content={rec.feedback} compact />)}
               </div>)}
             </div>);})}
         </div>
@@ -430,11 +431,44 @@ export default function Home() {
               <button onClick={handleNext} className="px-5 py-3.5 text-sm font-semibold text-zinc-400 bg-white/[0.05] border border-white/10 rounded-xl whitespace-nowrap cursor-pointer hover:bg-white/[0.08] transition-all">다음 문제 →</button>
             </div>
           </div>
-          {feedback&&(<div className="bg-emerald-400/[0.06] border border-emerald-400/20 rounded-2xl p-5 mb-5"><div className="text-[15px] font-bold text-emerald-400 mb-3">🤖 AI 피드백</div><pre className="text-sm leading-[1.75] text-zinc-300 whitespace-pre-wrap font-[inherit] m-0">{feedback}</pre></div>)}
+          {feedback&&(<FeedbackCard content={feedback} />)}
           <button onClick={handleComplete} disabled={!answer.trim()} className="w-full py-4 text-base font-bold text-emerald-400 bg-emerald-400/[0.08] border border-emerald-400/25 rounded-[14px] cursor-pointer hover:bg-emerald-400/15 transition-all disabled:opacity-40 disabled:cursor-default">✓ 학습 완료</button>
         </div>
       </div>);}
   return null;
+}
+
+function FeedbackCard({ content, compact = false }: { content: string; compact?: boolean }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className={`relative ${compact ? "bg-emerald-400/[0.04] border border-emerald-400/15 rounded-xl p-4" : "bg-emerald-400/[0.06] border border-emerald-400/20 rounded-2xl p-5 mb-5"}`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className={`font-bold text-emerald-400 ${compact ? "text-xs" : "text-[15px]"}`}>🤖 AI 피드백</div>
+        <div className="flex items-center gap-1.5">
+          {copied && <span className="text-[11px] text-emerald-400 copy-toast">복사됨!</span>}
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded-md hover:bg-white/[0.06] transition-colors cursor-pointer bg-transparent border-none text-zinc-500 hover:text-zinc-300"
+            title="마크다운으로 복사"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div className="prose-feedback">
+        <ReactMarkdown>{content}</ReactMarkdown>
+      </div>
+    </div>
+  );
 }
 
 function DiffBadge({difficulty}:{difficulty:1|2|3}){

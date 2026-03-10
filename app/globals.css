@@ -54,3 +54,100 @@ textarea:focus {
   border-color: var(--accent) !important;
   box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.15);
 }
+
+/* Markdown prose styles for AI feedback */
+.prose-feedback {
+  font-size: 14px;
+  line-height: 1.75;
+  color: #d4d4d8;
+}
+.prose-feedback h1,
+.prose-feedback h2,
+.prose-feedback h3 {
+  color: #f4f4f5;
+  font-weight: 700;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+  line-height: 1.4;
+}
+.prose-feedback h1 { font-size: 1.1em; }
+.prose-feedback h2 { font-size: 1.05em; }
+.prose-feedback h3 { font-size: 1em; }
+.prose-feedback h1:first-child,
+.prose-feedback h2:first-child,
+.prose-feedback h3:first-child {
+  margin-top: 0;
+}
+.prose-feedback p {
+  margin: 0.6em 0;
+}
+.prose-feedback p:first-child {
+  margin-top: 0;
+}
+.prose-feedback strong {
+  color: #f4f4f5;
+  font-weight: 600;
+}
+.prose-feedback em {
+  color: #a1a1aa;
+}
+.prose-feedback ul,
+.prose-feedback ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+.prose-feedback li {
+  margin: 0.3em 0;
+}
+.prose-feedback li::marker {
+  color: #52525b;
+}
+.prose-feedback code {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+  font-size: 0.9em;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  color: #c084fc;
+}
+.prose-feedback pre {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 0.75em 0;
+  overflow-x: auto;
+}
+.prose-feedback pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #d4d4d8;
+}
+.prose-feedback blockquote {
+  border-left: 3px solid rgba(129, 140, 248, 0.4);
+  padding-left: 1em;
+  margin: 0.75em 0;
+  color: #a1a1aa;
+}
+.prose-feedback hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 1em 0;
+}
+.prose-feedback a {
+  color: #818cf8;
+  text-decoration: underline;
+}
+
+/* Copy button toast */
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(4px); }
+  15% { opacity: 1; transform: translateY(0); }
+  85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+.copy-toast {
+  animation: fadeInOut 1.5s ease forwards;
+}
