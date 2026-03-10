@@ -6,8 +6,11 @@
 
 <!-- 스크린샷 들어갈 자리 -->
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/0b17d200-7e27-4e36-b1ef-7f1bef946dc1" height="520" />
-  <img src="https://github.com/user-attachments/assets/9f604443-6cf5-4924-ae8e-feceaa3337c4" height="520" />
+  <img src="https://github.com/user-attachments/assets/eda9b624-398f-4ed3-b2b7-dd135bf732b6" height="550" />
+  &nbsp;
+  <img src="https://github.com/user-attachments/assets/e73cae16-8a3f-4e84-90aa-22b4e347abcc" height="550" />
+  &nbsp;
+  <img src="https://github.com/user-attachments/assets/c37bc257-f134-4014-987e-096ed853bda4" height="550" />
 </p>
 
 <!-- ![메인 화면](./screenshots/home.png) -->
