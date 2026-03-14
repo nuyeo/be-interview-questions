@@ -92,14 +92,13 @@ export async function POST(request: Request) {
 
   // Rate limit for default key users
   if (!customApiKey) {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const utcTodayStart = new Date().toISOString().split("T")[0] + "T00:00:00.000Z";
     const { count, error: countError } = await supabase
       .from("study_records")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
       .neq("feedback", "")
-      .gte("studied_at", todayStart.toISOString());
+      .gte("studied_at", utcTodayStart);
 
     if (!countError && (count ?? 0) >= DAILY_FREE_LIMIT) {
       return NextResponse.json({
