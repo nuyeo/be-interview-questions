@@ -25,7 +25,14 @@ const MODEL_OPTIONS = {
 };
 
 function getToday() { return new Date().toISOString().split("T")[0]; }
-function getUTCTodayStart() { return new Date().toISOString().split("T")[0] + "T00:00:00"; }
+// KST(UTC+9) 기준 오늘 0시를 UTC ISO 문자열로 반환
+function getKSTTodayStartUTC() {
+  const now = new Date();
+  const kstOffset = 9 * 60; // KST = UTC+9
+  const kstNow = new Date(now.getTime() + kstOffset * 60 * 1000);
+  const kstDateStr = kstNow.toISOString().split("T")[0];
+  return new Date(kstDateStr + "T00:00:00+09:00").toISOString(); // "YYYY-MM-DDT15:00:00.000Z" (전날 UTC)
+}
 function formatDate(iso: string) { const d = new Date(iso); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; }
 function loadJSON<T>(key: string, fallback: T): T { if (typeof window==="undefined") return fallback; try { const r=localStorage.getItem(key); return r?JSON.parse(r):fallback; } catch { return fallback; } }
 function saveJSON(key: string, value: unknown) { localStorage.setItem(key, JSON.stringify(value)); }
@@ -98,17 +105,17 @@ export default function Home() {
   }, [user, authLoading]);
 
   // Derived
-  const utcToday = getUTCTodayStart();
+  const kstTodayUTC = getKSTTodayStartUTC();
   const activeQuestions=QUESTIONS.filter(q=>selectedCategories.has(q.category));
   const completed=new Set(records.keys());
-  const todayIds=new Set([...records.entries()].filter(([,r])=>r.studied_at>=utcToday).map(([qid])=>qid));
+  const todayIds=new Set([...records.entries()].filter(([,r])=>r.studied_at>=kstTodayUTC).map(([qid])=>qid));
   const todayCount=todayIds.size;
   const completedInActive=activeQuestions.filter(q=>completed.has(q.id)).length;
   const bookmarkCount=QUESTIONS.filter(q=>bookmarks.has(q.id)).length;
   const totalQ=activeQuestions.length;
   const progress=totalQ>0?Math.round((completedInActive/totalQ)*100):0;
   const hasCustomKey=!!customApiKey;
-  const feedbackUsedToday=[...records.values()].filter(r=>r.feedback&&r.studied_at>=utcToday).length;
+  const feedbackUsedToday=[...records.values()].filter(r=>r.feedback&&r.studied_at>=kstTodayUTC).length;
   const feedbackRemaining=hasCustomKey?Infinity:DAILY_FREE_LIMIT-feedbackUsedToday;
   const canUseFeedback=!!user&&(hasCustomKey||feedbackRemaining>0);
 
