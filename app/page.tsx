@@ -25,6 +25,14 @@ const MODEL_OPTIONS = {
 };
 
 function getToday() { return new Date().toISOString().split("T")[0]; }
+// KST(UTC+9) 기준 오늘 0시를 UTC ISO 문자열로 반환
+function getKSTTodayStartUTC() {
+  const now = new Date();
+  const kstOffset = 9 * 60; // KST = UTC+9
+  const kstNow = new Date(now.getTime() + kstOffset * 60 * 1000);
+  const kstDateStr = kstNow.toISOString().split("T")[0];
+  return new Date(kstDateStr + "T00:00:00+09:00").toISOString(); // "YYYY-MM-DDT15:00:00.000Z" (전날 UTC)
+}
 function formatDate(iso: string) { const d = new Date(iso); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`; }
 function loadJSON<T>(key: string, fallback: T): T { if (typeof window==="undefined") return fallback; try { const r=localStorage.getItem(key); return r?JSON.parse(r):fallback; } catch { return fallback; } }
 function saveJSON(key: string, value: unknown) { localStorage.setItem(key, JSON.stringify(value)); }
@@ -56,7 +64,6 @@ export default function Home() {
   const [showCategorySettings, setShowCategorySettings] = useState(false);
   const [showApiKeySettings, setShowApiKeySettings] = useState(false);
   const [expandedId, setExpandedId] = useState<number|null>(null);
-  const [feedbackUsedToday, setFeedbackUsedToday] = useState(0);
 
   useEffect(() => { const h=(e:MouseEvent)=>{ if(dropdownRef.current&&!dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false); }; document.addEventListener("mousedown",h); return ()=>document.removeEventListener("mousedown",h); }, []);
 
@@ -81,8 +88,6 @@ export default function Home() {
       if(user){
         const [recs,bks]=await Promise.all([fetchStudyRecords(user.id),fetchBookmarks(user.id)]);
         const m=new Map<number,StudyRecord>(); recs.forEach(r=>m.set(r.question_id,r)); setRecords(m); setBookmarks(new Set(bks));
-        const todayFb = recs.filter(r => r.feedback && r.studied_at.startsWith(getToday())).length;
-        setFeedbackUsedToday(todayFb);
       } else {
         const cp=loadJSON<{qid:number;answer:string;feedback:string;date:string}[]>("guestRecords",[]);
         const m=new Map<number,StudyRecord>(); cp.forEach(r=>m.set(r.qid,{question_id:r.qid,answer:r.answer,feedback:r.feedback,studied_at:r.date})); setRecords(m);
@@ -100,15 +105,17 @@ export default function Home() {
   }, [user, authLoading]);
 
   // Derived
+  const kstTodayUTC = getKSTTodayStartUTC();
   const activeQuestions=QUESTIONS.filter(q=>selectedCategories.has(q.category));
   const completed=new Set(records.keys());
-  const todayIds=new Set([...records.entries()].filter(([,r])=>r.studied_at.startsWith(getToday())).map(([qid])=>qid));
+  const todayIds=new Set([...records.entries()].filter(([,r])=>r.studied_at>=kstTodayUTC).map(([qid])=>qid));
   const todayCount=todayIds.size;
   const completedInActive=activeQuestions.filter(q=>completed.has(q.id)).length;
   const bookmarkCount=QUESTIONS.filter(q=>bookmarks.has(q.id)).length;
   const totalQ=activeQuestions.length;
   const progress=totalQ>0?Math.round((completedInActive/totalQ)*100):0;
   const hasCustomKey=!!customApiKey;
+  const feedbackUsedToday=[...records.values()].filter(r=>r.feedback&&r.studied_at>=kstTodayUTC).length;
   const feedbackRemaining=hasCustomKey?Infinity:DAILY_FREE_LIMIT-feedbackUsedToday;
   const canUseFeedback=!!user&&(hasCustomKey||feedbackRemaining>0);
 
@@ -178,8 +185,7 @@ export default function Home() {
       const data=await res.json();
       if(res.ok){
         setFeedback(data.feedback);
-        if(!hasCustomKey) setFeedbackUsedToday(prev=>prev+1);
-        // 피드백을 받은 즉시 DB에 저장 (새로고침해도 카운트 유지)
+        // DB에 즉시 저장 → records state 업데이트 → feedbackUsedToday 자동 재계산
         await saveRecord(currentQ.id, answer, data.feedback);
       } else {
         setFeedback(data.error||"피드백을 받지 못했습니다.");

@@ -92,14 +92,18 @@ export async function POST(request: Request) {
 
   // Rate limit for default key users
   if (!customApiKey) {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // KST(UTC+9) 기준 오늘 0시를 UTC ISO 문자열로 계산
+    const now = new Date();
+    const kstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    const kstDateStr = kstNow.toISOString().split("T")[0];
+    const kstTodayStartUTC = new Date(kstDateStr + "T00:00:00+09:00").toISOString();
+
     const { count, error: countError } = await supabase
       .from("study_records")
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id)
       .neq("feedback", "")
-      .gte("studied_at", todayStart.toISOString());
+      .gte("studied_at", kstTodayStartUTC);
 
     if (!countError && (count ?? 0) >= DAILY_FREE_LIMIT) {
       return NextResponse.json({
